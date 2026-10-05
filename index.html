@@ -151,7 +151,7 @@
             <!-- Quản lý danh sách phòng -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <h2 class="font-bold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                    <i class="fa-solid fa-door-open text-brand-600"></i> Danh Sách Phòng Trọ
+                    <i class="fa-solid fa-door-open text-brand-600"></i> Danh Sách Phòng Trọ Hiện Tại
                 </h2>
 
                 <div class="grid grid-cols-1 gap-2">
@@ -388,11 +388,23 @@
             const prevRecords = appData.records[prevPeriod] || {};
             const currentRecords = appData.records[currentPeriod];
 
+            // TẬP HỢP TẤT CẢ PHÒNG (Gồm phòng hiện tại + phòng đã từng có dữ liệu ở tháng đang xem)
+            const activeRoomsMap = new Map();
+            
+            // 1. Thêm danh sách phòng hiện tại từ Cấu Hình
+            appData.settings.rooms.forEach(r => activeRoomsMap.set(r.name, r));
+
+            // 2. Thêm các phòng từng có dữ liệu ở tháng này (dù đã bị xóa trong Cấu Hình)
+            Object.keys(currentRecords).forEach(rName => {
+                if (!activeRoomsMap.has(rName)) {
+                    activeRoomsMap.set(rName, { name: rName, price: currentRecords[rName].roomPrice || 0, service: currentRecords[rName].servicePrice || 0 });
+                }
+            });
+
             let totalMoneyAll = 0;
             let recordedCount = 0;
 
-            appData.settings.rooms.forEach(roomObj => {
-                const roomName = roomObj.name;
+            activeRoomsMap.forEach((roomObj, roomName) => {
                 let roomData = currentRecords[roomName];
 
                 // Nếu phòng chưa có record tháng này, tự động lấy chỉ số MỚI & GIÁ PHÒNG tháng trước
@@ -491,7 +503,7 @@
 
             // Cập nhật thẻ thống kê
             document.getElementById("stat-total-money").textContent = `${formatMoney(totalMoneyAll)} đ`;
-            document.getElementById("stat-progress").textContent = `${recordedCount}/${appData.settings.rooms.length} phòng`;
+            document.getElementById("stat-progress").textContent = `${recordedCount}/${activeRoomsMap.size} phòng`;
 
             saveStorage();
         }
@@ -622,7 +634,7 @@
         }
 
         function removeRoom(index) {
-            if (confirm("Bạn có chắc chắn muốn xóa phòng này?")) {
+            if (confirm("Bạn có chắc chắn muốn xóa phòng này khỏi Danh Sách Hiện Tại? (Dữ liệu của phòng ở các tháng cũ vẫn được giữ nguyên đầy đủ)")) {
                 appData.settings.rooms.splice(index, 1);
                 saveStorage();
                 renderTabSettings();
