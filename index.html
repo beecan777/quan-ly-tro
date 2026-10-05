@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quản Lý Điện Nước Phòng Trọ</title>
     <link rel="apple-touch-icon" href="icon.png">
-    <link rel="apple-touch-icon" href="icon.png">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -122,7 +122,7 @@
         <div id="tab-settings" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h2 class="font-bold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
-                    <i class="fa-solid fa-sliders text-brand-600"></i> Đơn Giá Mặc Định
+                    <i class="fa-solid fa-sliders text-brand-600"></i> Đơn Giá Điện Nước Mặc Định
                 </h2>
 
                 <div class="space-y-3">
@@ -141,26 +141,10 @@
                             <i class="fa-solid fa-droplet absolute left-3 top-3 text-slate-400 text-xs"></i>
                         </div>
                     </div>
-
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600 block mb-1">Tiền Phòng Mặc Định (VNĐ)</label>
-                        <div class="relative">
-                            <input type="number" id="setting-price-room" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-brand-500 pl-8" placeholder="2000000">
-                            <i class="fa-solid fa-bed absolute left-3 top-3 text-slate-400 text-xs"></i>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600 block mb-1">Phí Dịch Vụ Cố Định (Rác, Wifi, Vệ sinh... - VNĐ)</label>
-                        <div class="relative">
-                            <input type="number" id="setting-price-service" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:border-brand-500 pl-8" placeholder="100000">
-                            <i class="fa-solid fa-wifi absolute left-3 top-3 text-slate-400 text-xs"></i>
-                        </div>
-                    </div>
                 </div>
 
                 <button onclick="saveSettings()" class="w-full bg-brand-600 hover:bg-brand-700 active:scale-98 transition-all text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình Đơn Giá
+                    <i class="fa-solid fa-floppy-disk"></i> Lưu Giá Điện / Nước
                 </button>
             </div>
 
@@ -170,12 +154,16 @@
                     <i class="fa-solid fa-door-open text-brand-600"></i> Danh Sách Phòng Trọ
                 </h2>
 
-                <div class="flex gap-2">
-                    <input type="text" id="new-room-name" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-brand-500" placeholder="Tên phòng (VD: Phòng 101)">
-                    <button onclick="addNewRoom()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold active:scale-95 transition-all">Thêm</button>
+                <div class="grid grid-cols-1 gap-2">
+                    <input type="text" id="new-room-name" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:border-brand-500" placeholder="Tên phòng (VD: Phòng 101)">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="new-room-price" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-brand-500" placeholder="Giá phòng (VD: 2000000)">
+                        <input type="number" id="new-room-service" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:border-brand-500" placeholder="Phí dịch vụ (VD: 100000)">
+                    </div>
+                    <button onclick="addNewRoom()" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-xl text-sm font-semibold active:scale-95 transition-all mt-1">Thêm Phòng Mới</button>
                 </div>
 
-                <div id="setting-room-list" class="divide-y divide-slate-100 pt-2">
+                <div id="setting-room-list" class="divide-y divide-slate-100 pt-2 space-y-2">
                     <!-- Danh sách phòng xóa / sửa -->
                 </div>
             </div>
@@ -282,14 +270,16 @@
         const DEFAULT_SETTINGS = {
             priceElectric: 3500,
             priceWater: 10000,
-            priceRoom: 2000000,
-            priceService: 100000,
-            rooms: ["Phòng 101", "Phòng 102", "Phòng 103"]
+            rooms: [
+                { name: "Phòng 101", price: 2000000, service: 100000 },
+                { name: "Phòng 102", price: 2200000, service: 100000 },
+                { name: "Phòng 103", price: 2500000, service: 120000 }
+            ]
         };
 
         let appData = {
             settings: { ...DEFAULT_SETTINGS },
-            records: {} // { "2026-10": { "Phòng 101": { eOld, eNew, wOld, wNew, ... } } }
+            records: {} // { "2026-10": { "Phòng 101": { eOld, eNew, wOld, wNew, roomPrice, servicePrice } } }
         };
 
         let currentPeriod = ""; // Dạng "2026-10"
@@ -310,6 +300,15 @@
                     appData = JSON.parse(saved);
                     if (!appData.settings) appData.settings = { ...DEFAULT_SETTINGS };
                     if (!appData.records) appData.records = {};
+                    
+                    // Chuẩn hóa cấu trúc danh sách phòng nếu là dữ liệu cũ
+                    if (appData.settings.rooms.length > 0 && typeof appData.settings.rooms[0] === 'string') {
+                        appData.settings.rooms = appData.settings.rooms.map(rName => ({
+                            name: rName,
+                            price: 2000000,
+                            service: 100000
+                        }));
+                    }
                 } catch(e) {
                     console.error("Lỗi đọc dữ liệu localStorage", e);
                 }
@@ -392,10 +391,11 @@
             let totalMoneyAll = 0;
             let recordedCount = 0;
 
-            appData.settings.rooms.forEach(roomName => {
+            appData.settings.rooms.forEach(roomObj => {
+                const roomName = roomObj.name;
                 let roomData = currentRecords[roomName];
 
-                // Nếu phòng chưa có record tháng này, tự động lấy chỉ số MỚI của tháng trước làm chỉ số CỦA tháng này
+                // Nếu phòng chưa có record tháng này, tự động lấy chỉ số MỚI & GIÁ PHÒNG tháng trước
                 if (!roomData) {
                     const prevRoomData = prevRecords[roomName] || {};
                     roomData = {
@@ -403,8 +403,8 @@
                         eNew: "",
                         wOld: prevRoomData.wNew || "",
                         wNew: "",
-                        roomPrice: appData.settings.priceRoom,
-                        servicePrice: appData.settings.priceService
+                        roomPrice: prevRoomData.roomPrice !== undefined ? prevRoomData.roomPrice : roomObj.price,
+                        servicePrice: prevRoomData.servicePrice !== undefined ? prevRoomData.servicePrice : roomObj.service
                     };
                     currentRecords[roomName] = roomData;
                 }
@@ -436,6 +436,18 @@
                         <button onclick="openInvoiceModal('${roomName}')" class="text-xs bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all text-slate-700 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5">
                             <i class="fa-solid fa-receipt text-brand-600"></i> Xem Hóa Đơn
                         </button>
+                    </div>
+
+                    <!-- Ô chỉnh Tiền Phòng & Dịch Vụ riêng -->
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">Tiền phòng (đ)</label>
+                            <input type="number" value="${roomData.roomPrice}" onchange="updateRoomRecord('${roomName}', 'roomPrice', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-brand-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">Tiền dịch vụ (đ)</label>
+                            <input type="number" value="${roomData.servicePrice}" onchange="updateRoomRecord('${roomName}', 'servicePrice', this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:border-brand-500">
+                        </div>
                     </div>
 
                     <!-- Ô nhập điện -->
@@ -495,12 +507,13 @@
             }
 
             const currentRecords = appData.records[currentPeriod];
-            appData.settings.rooms.forEach(roomName => {
+            appData.settings.rooms.forEach(roomObj => {
+                const roomName = roomObj.name;
                 if (prevRecords[roomName]) {
                     if (!currentRecords[roomName]) {
                         currentRecords[roomName] = {
-                            roomPrice: appData.settings.priceRoom,
-                            servicePrice: appData.settings.priceService
+                            roomPrice: prevRecords[roomName].roomPrice || roomObj.price,
+                            servicePrice: prevRecords[roomName].servicePrice || roomObj.service
                         };
                     }
                     if (prevRecords[roomName].eNew !== undefined) {
@@ -519,9 +532,10 @@
         // Cập nhật giá trị ô input
         function updateRoomRecord(roomName, field, value) {
             if (!appData.records[currentPeriod][roomName]) {
+                const roomObj = appData.settings.rooms.find(r => r.name === roomName) || {};
                 appData.records[currentPeriod][roomName] = {
-                    roomPrice: appData.settings.priceRoom,
-                    servicePrice: appData.settings.priceService
+                    roomPrice: roomObj.price || 0,
+                    servicePrice: roomObj.service || 0
                 };
             }
             appData.records[currentPeriod][roomName][field] = value;
@@ -553,17 +567,18 @@
         function renderTabSettings() {
             document.getElementById("setting-price-electric").value = appData.settings.priceElectric;
             document.getElementById("setting-price-water").value = appData.settings.priceWater;
-            document.getElementById("setting-price-room").value = appData.settings.priceRoom;
-            document.getElementById("setting-price-service").value = appData.settings.priceService;
 
             const roomListContainer = document.getElementById("setting-room-list");
             roomListContainer.innerHTML = "";
 
-            appData.settings.rooms.forEach((roomName, idx) => {
+            appData.settings.rooms.forEach((roomObj, idx) => {
                 const item = document.createElement("div");
-                item.className = "flex items-center justify-between py-2 text-sm font-semibold text-slate-800";
+                item.className = "flex items-center justify-between py-2 text-sm text-slate-800";
                 item.innerHTML = `
-                    <span>${roomName}</span>
+                    <div>
+                        <div class="font-bold">${roomObj.name}</div>
+                        <div class="text-xs text-slate-500">Giá: ${formatMoney(roomObj.price)}đ | Dịch vụ: ${formatMoney(roomObj.service)}đ</div>
+                    </div>
                     <button onclick="removeRoom(${idx})" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 rounded bg-rose-50">
                         <i class="fa-solid fa-trash-can"></i> Xóa
                     </button>
@@ -575,25 +590,34 @@
         function saveSettings() {
             appData.settings.priceElectric = Number(document.getElementById("setting-price-electric").value) || 0;
             appData.settings.priceWater = Number(document.getElementById("setting-price-water").value) || 0;
-            appData.settings.priceRoom = Number(document.getElementById("setting-price-room").value) || 0;
-            appData.settings.priceService = Number(document.getElementById("setting-price-service").value) || 0;
 
             saveStorage();
-            alert("Đã lưu cấu hình thành công!");
+            alert("Đã lưu đơn giá Điện và Nước thành công!");
         }
 
         function addNewRoom() {
-            const input = document.getElementById("new-room-name");
-            const name = input.value.trim();
+            const nameInput = document.getElementById("new-room-name");
+            const priceInput = document.getElementById("new-room-price");
+            const serviceInput = document.getElementById("new-room-service");
+
+            const name = nameInput.value.trim();
+            const price = Number(priceInput.value) || 0;
+            const service = Number(serviceInput.value) || 0;
+
             if (name) {
-                if (!appData.settings.rooms.includes(name)) {
-                    appData.settings.rooms.push(name);
-                    input.value = "";
+                const exists = appData.settings.rooms.some(r => r.name === name);
+                if (!exists) {
+                    appData.settings.rooms.push({ name, price, service });
+                    nameInput.value = "";
+                    priceInput.value = "";
+                    serviceInput.value = "";
                     saveStorage();
                     renderTabSettings();
                 } else {
                     alert("Tên phòng này đã tồn tại!");
                 }
+            } else {
+                alert("Vui lòng nhập tên phòng!");
             }
         }
 
@@ -609,13 +633,14 @@
         function openInvoiceModal(roomName) {
             activeRoomForInvoice = roomName;
             const record = appData.records[currentPeriod][roomName] || {};
+            const roomObj = appData.settings.rooms.find(r => r.name === roomName) || {};
 
             const [y, m] = currentPeriod.split('-');
             document.getElementById("inv-room-name").textContent = roomName.toUpperCase();
             document.getElementById("inv-period").textContent = `Tháng ${m}/${y}`;
 
-            const rPrice = Number(record.roomPrice) || appData.settings.priceRoom;
-            const sPrice = Number(record.servicePrice) || appData.settings.priceService;
+            const rPrice = record.roomPrice !== undefined ? Number(record.roomPrice) : (roomObj.price || 0);
+            const sPrice = record.servicePrice !== undefined ? Number(record.servicePrice) : (roomObj.service || 0);
 
             const eOld = Number(record.eOld) || 0;
             const eNew = Number(record.eNew) || 0;
@@ -653,10 +678,11 @@
         function copyZaloText() {
             const roomName = activeRoomForInvoice;
             const record = appData.records[currentPeriod][roomName] || {};
+            const roomObj = appData.settings.rooms.find(r => r.name === roomName) || {};
             const [y, m] = currentPeriod.split('-');
 
-            const rPrice = Number(record.roomPrice) || appData.settings.priceRoom;
-            const sPrice = Number(record.servicePrice) || appData.settings.priceService;
+            const rPrice = record.roomPrice !== undefined ? Number(record.roomPrice) : (roomObj.price || 0);
+            const sPrice = record.servicePrice !== undefined ? Number(record.servicePrice) : (roomObj.service || 0);
 
             const eOld = Number(record.eOld) || 0;
             const eNew = Number(record.eNew) || 0;
