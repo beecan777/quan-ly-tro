@@ -148,6 +148,32 @@
                 </button>
             </div>
 
+            <!-- Mã QR Ngân Hàng Thanh Toán -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <h2 class="font-bold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-brand-600"></i> Mã QR Tài Khoản Ngân Hàng
+                </h2>
+                
+                <p class="text-xs text-slate-500">Tải lên ảnh mã QR chuyển khoản của bạn để hiển thị trực tiếp trên hóa đơn:</p>
+                
+                <div class="flex items-center gap-3">
+                    <div id="qr-preview-container" class="w-20 h-20 bg-slate-100 border border-dashed border-slate-300 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                        <i class="fa-solid fa-image text-slate-300 text-2xl" id="qr-placeholder-icon"></i>
+                        <img id="qr-preview-img" class="w-full h-full object-cover hidden" alt="Mã QR">
+                    </div>
+                    
+                    <div class="space-y-2 flex-1">
+                        <label class="block cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2 px-3 rounded-xl text-center active:scale-95 transition-all">
+                            <i class="fa-solid fa-upload mr-1"></i> Chọn Ảnh QR
+                            <input type="file" id="qr-input-file" accept="image/*" onchange="handleQRUpload(event)" class="hidden">
+                        </label>
+                        <button onclick="removeQRCode()" id="btn-remove-qr" class="w-full text-xs text-rose-600 hover:bg-rose-50 font-medium py-1 rounded-lg hidden">
+                            <i class="fa-solid fa-trash-can"></i> Xóa Mã QR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Quản lý danh sách phòng -->
             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <h2 class="font-bold text-slate-900 border-b border-slate-100 pb-2.5 flex items-center gap-2">
@@ -248,6 +274,12 @@
                         <span class="font-bold text-sm text-slate-900">TỔNG CỘNG:</span>
                         <span id="inv-grand-total" class="font-bold text-base text-brand-600">0 đ</span>
                     </div>
+
+                    <!-- Mã QR Hiển Thị Trên Hóa Đơn -->
+                    <div id="inv-qr-section" class="pt-2 border-t border-slate-200 hidden flex-col items-center">
+                        <p class="text-[11px] font-semibold text-slate-500 mb-1.5">Mã QR Thanh Toán Ngân Hàng</p>
+                        <img id="inv-qr-img" class="w-36 h-36 object-contain rounded-xl border border-slate-200 bg-white p-1" alt="QR Code">
+                    </div>
                 </div>
 
             </div>
@@ -270,6 +302,7 @@
         const DEFAULT_SETTINGS = {
             priceElectric: 3500,
             priceWater: 10000,
+            qrCodeImage: "", // Lưu chuỗi Base64 của ảnh Mã QR
             rooms: []
         };
 
@@ -294,7 +327,7 @@
             if (saved) {
                 try {
                     appData = JSON.parse(saved);
-                    if (!appData.settings) appData.settings = { priceElectric: 3500, priceWater: 10000, rooms: [] };
+                    if (!appData.settings) appData.settings = { ...DEFAULT_SETTINGS };
                     if (!appData.records) appData.records = {};
                 } catch(e) {
                     console.error("Lỗi đọc dữ liệu localStorage", e);
@@ -579,6 +612,23 @@
             document.getElementById("setting-price-electric").value = appData.settings.priceElectric;
             document.getElementById("setting-price-water").value = appData.settings.priceWater;
 
+            // Render Preview QR Code
+            const qrImg = document.getElementById("qr-preview-img");
+            const qrIcon = document.getElementById("qr-placeholder-icon");
+            const btnRemove = document.getElementById("btn-remove-qr");
+
+            if (appData.settings.qrCodeImage) {
+                qrImg.src = appData.settings.qrCodeImage;
+                qrImg.classList.remove("hidden");
+                qrIcon.classList.add("hidden");
+                btnRemove.classList.remove("hidden");
+            } else {
+                qrImg.src = "";
+                qrImg.classList.add("hidden");
+                qrIcon.classList.remove("hidden");
+                btnRemove.classList.add("hidden");
+            }
+
             const roomListContainer = document.getElementById("setting-room-list");
             roomListContainer.innerHTML = "";
 
@@ -601,6 +651,30 @@
                 `;
                 roomListContainer.appendChild(item);
             });
+        }
+
+        // Xử lý upload ảnh QR
+        function handleQRUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                appData.settings.qrCodeImage = e.target.result;
+                saveStorage();
+                renderTabSettings();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Xóa mã QR
+        function removeQRCode() {
+            if (confirm("Bạn có chắc chắn muốn xóa ảnh Mã QR đã lưu?")) {
+                appData.settings.qrCodeImage = "";
+                document.getElementById("qr-input-file").value = "";
+                saveStorage();
+                renderTabSettings();
+            }
         }
 
         function saveSettings() {
@@ -637,14 +711,11 @@
             }
         }
 
-        // Xóa phòng hoàn toàn (Cả Cấu Hình lẫn dữ liệu trong Lịch Sử)
         function removeRoom(index) {
             const roomName = appData.settings.rooms[index].name;
             if (confirm(`Bạn có chắc chắn muốn XÓA hẳn phòng "${roomName}" không?\n\nLưu ý: Tất cả dữ liệu của phòng này (kể cả lịch sử các tháng cũ) sẽ bị xóa sạch hoàn toàn.`)) {
-                // 1. Xóa khỏi cấu hình
                 appData.settings.rooms.splice(index, 1);
 
-                // 2. Xóa triệt để tên phòng này trong tất cả các tháng lịch sử
                 Object.keys(appData.records).forEach(period => {
                     if (appData.records[period][roomName]) {
                         delete appData.records[period][roomName];
@@ -692,6 +763,18 @@
             document.getElementById("inv-water-usage").textContent = `${wUsage} m³`;
 
             document.getElementById("inv-grand-total").textContent = `${formatMoney(grandTotal)} đ`;
+
+            // Render Mã QR lên hóa đơn nếu có
+            const qrSection = document.getElementById("inv-qr-section");
+            const qrImg = document.getElementById("inv-qr-img");
+            if (appData.settings.qrCodeImage) {
+                qrImg.src = appData.settings.qrCodeImage;
+                qrSection.classList.remove("hidden");
+                qrSection.classList.add("flex");
+            } else {
+                qrSection.classList.add("hidden");
+                qrSection.classList.remove("flex");
+            }
 
             document.getElementById("invoiceModal").classList.remove("hidden");
         }
