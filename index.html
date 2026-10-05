@@ -221,7 +221,7 @@
                                 <span id="inv-elec-total">0 đ</span>
                             </div>
                             <div class="flex justify-between text-[11px] text-slate-400">
-                                <span id="inv-elec-num">Sô cũ: 0 - Số mới: 0</span>
+                                <span id="inv-elec-num">Số cũ: 0 - Số mới: 0</span>
                                 <span id="inv-elec-usage">0 kWh</span>
                             </div>
                         </div>
@@ -266,15 +266,11 @@
 
     <!-- JAVASCRIPT LOGIC XỬ LÝ -->
     <script>
-        // Cấu hình kho dữ liệu mặc định
+        // Cấu hình kho dữ liệu mặc định ban đầu
         const DEFAULT_SETTINGS = {
             priceElectric: 3500,
             priceWater: 10000,
-            rooms: [
-                { name: "Phòng 101", price: 2000000, service: 100000 },
-                { name: "Phòng 102", price: 2200000, service: 100000 },
-                { name: "Phòng 103", price: 2500000, service: 120000 }
-            ]
+            rooms: []
         };
 
         let appData = {
@@ -282,7 +278,7 @@
             records: {} // { "2026-10": { "Phòng 101": { eOld, eNew, wOld, wNew, roomPrice, servicePrice } } }
         };
 
-        let currentPeriod = ""; // Dạng "2026-10"
+        let currentPeriod = ""; 
         let activeRoomForInvoice = "";
 
         // Khởi chạy App khi load trang
@@ -294,32 +290,29 @@
 
         // Đọc dữ liệu từ localStorage
         function loadStorage() {
-            const saved = localStorage.getItem("QUAN_LY_TRO_DATA_V2");
+            const saved = localStorage.getItem("QUAN_LY_TRO_DATA_V3");
             if (saved) {
                 try {
                     appData = JSON.parse(saved);
-                    if (!appData.settings) appData.settings = { ...DEFAULT_SETTINGS };
+                    if (!appData.settings) appData.settings = { priceElectric: 3500, priceWater: 10000, rooms: [] };
                     if (!appData.records) appData.records = {};
-                    
-                    // Chuẩn hóa cấu trúc danh sách phòng nếu là dữ liệu cũ
-                    if (appData.settings.rooms.length > 0 && typeof appData.settings.rooms[0] === 'string') {
-                        appData.settings.rooms = appData.settings.rooms.map(rName => ({
-                            name: rName,
-                            price: 2000000,
-                            service: 100000
-                        }));
-                    }
                 } catch(e) {
                     console.error("Lỗi đọc dữ liệu localStorage", e);
                 }
             } else {
+                // Lần đầu tiên mở app mới gán 3 phòng mẫu
+                appData.settings.rooms = [
+                    { name: "Phòng 101", price: 2000000, service: 100000 },
+                    { name: "Phòng 102", price: 2200000, service: 100000 },
+                    { name: "Phòng 103", price: 2500000, service: 120000 }
+                ];
                 saveStorage();
             }
         }
 
         // Lưu dữ liệu vào localStorage
         function saveStorage() {
-            localStorage.setItem("QUAN_LY_TRO_DATA_V2", JSON.stringify(appData));
+            localStorage.setItem("QUAN_LY_TRO_DATA_V3", JSON.stringify(appData));
         }
 
         // Khởi tạo danh sách Tháng và Năm
@@ -363,7 +356,6 @@
             renderTabInput();
         }
 
-        // Lấy key thời gian của tháng trước đó (Ví dụ: "2026-10" -> "2026-09")
         function getPreviousPeriodKey(periodKey) {
             const [y, m] = periodKey.split('-').map(Number);
             let prevM = m - 1;
@@ -388,18 +380,35 @@
             const prevRecords = appData.records[prevPeriod] || {};
             const currentRecords = appData.records[currentPeriod];
 
-            // TẬP HỢP TẤT CẢ PHÒNG (Gồm phòng hiện tại + phòng đã từng có dữ liệu ở tháng đang xem)
+            // Tập hợp phòng cần hiển thị
             const activeRoomsMap = new Map();
             
-            // 1. Thêm danh sách phòng hiện tại từ Cấu Hình
+            // 1. Thêm danh sách phòng trong Cấu hình
             appData.settings.rooms.forEach(r => activeRoomsMap.set(r.name, r));
 
-            // 2. Thêm các phòng từng có dữ liệu ở tháng này (dù đã bị xóa trong Cấu Hình)
+            // 2. Thêm các phòng từng có lịch sử ghi số ở tháng đang chọn
             Object.keys(currentRecords).forEach(rName => {
                 if (!activeRoomsMap.has(rName)) {
-                    activeRoomsMap.set(rName, { name: rName, price: currentRecords[rName].roomPrice || 0, service: currentRecords[rName].servicePrice || 0 });
+                    activeRoomsMap.set(rName, { 
+                        name: rName, 
+                        price: currentRecords[rName].roomPrice || 0, 
+                        service: currentRecords[rName].servicePrice || 0 
+                    });
                 }
             });
+
+            if (activeRoomsMap.size === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                        <i class="fa-solid fa-door-closed text-4xl mb-2 text-slate-300"></i>
+                        <p class="text-sm font-semibold">Chưa có phòng nào trong danh sách</p>
+                        <p class="text-xs mt-1">Vào mục <b>Cấu Hình</b> bên dưới để thêm phòng mới.</p>
+                    </div>
+                `;
+                document.getElementById("stat-total-money").textContent = "0 đ";
+                document.getElementById("stat-progress").textContent = "0/0 phòng";
+                return;
+            }
 
             let totalMoneyAll = 0;
             let recordedCount = 0;
@@ -407,7 +416,6 @@
             activeRoomsMap.forEach((roomObj, roomName) => {
                 let roomData = currentRecords[roomName];
 
-                // Nếu phòng chưa có record tháng này, tự động lấy chỉ số MỚI & GIÁ PHÒNG tháng trước
                 if (!roomData) {
                     const prevRoomData = prevRecords[roomName] || {};
                     roomData = {
@@ -421,7 +429,6 @@
                     currentRecords[roomName] = roomData;
                 }
 
-                // Tính toán tiền
                 const eUsage = Math.max(0, (Number(roomData.eNew) || 0) - (Number(roomData.eOld) || 0));
                 const wUsage = Math.max(0, (Number(roomData.wNew) || 0) - (Number(roomData.wOld) || 0));
 
@@ -434,7 +441,6 @@
                     recordedCount++;
                 }
 
-                // Element HTML thẻ phòng
                 const card = document.createElement("div");
                 card.className = "bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3";
                 card.innerHTML = `
@@ -450,7 +456,6 @@
                         </button>
                     </div>
 
-                    <!-- Ô chỉnh Tiền Phòng & Dịch Vụ riêng -->
                     <div class="grid grid-cols-2 gap-2 text-xs">
                         <div>
                             <label class="text-[10px] text-slate-500 font-semibold block mb-0.5">Tiền phòng (đ)</label>
@@ -462,7 +467,6 @@
                         </div>
                     </div>
 
-                    <!-- Ô nhập điện -->
                     <div class="bg-amber-50/50 p-2.5 rounded-xl border border-amber-100 space-y-2">
                         <div class="flex justify-between items-center text-xs font-bold text-amber-900">
                             <span><i class="fa-solid fa-bolt text-amber-500"></i> ĐIỆN (${formatMoney(appData.settings.priceElectric)}đ/kWh)</span>
@@ -480,7 +484,6 @@
                         </div>
                     </div>
 
-                    <!-- Ô nhập nước -->
                     <div class="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100 space-y-2">
                         <div class="flex justify-between items-center text-xs font-bold text-blue-900">
                             <span><i class="fa-solid fa-droplet text-blue-500"></i> NƯỚC (${formatMoney(appData.settings.priceWater)}đ/m³)</span>
@@ -501,14 +504,12 @@
                 container.appendChild(card);
             });
 
-            // Cập nhật thẻ thống kê
             document.getElementById("stat-total-money").textContent = `${formatMoney(totalMoneyAll)} đ`;
             document.getElementById("stat-progress").textContent = `${recordedCount}/${activeRoomsMap.size} phòng`;
 
             saveStorage();
         }
 
-        // Tự động lấy số mới tháng trước đè lên số cũ tháng này
         function autoFillPreviousMonthData() {
             const prevPeriod = getPreviousPeriodKey(currentPeriod);
             const prevRecords = appData.records[prevPeriod];
@@ -538,10 +539,9 @@
             });
 
             renderTabInput();
-            alert(`Đã cập nhật chỉ số cũ theo số mới của tháng trước (${prevPeriod.split('-').reverse().join('/')}) thành công!`);
+            alert(`Đã cập nhật chỉ số thành công!`);
         }
 
-        // Cập nhật giá trị ô input
         function updateRoomRecord(roomName, field, value) {
             if (!appData.records[currentPeriod][roomName]) {
                 const roomObj = appData.settings.rooms.find(r => r.name === roomName) || {};
@@ -554,7 +554,6 @@
             renderTabInput();
         }
 
-        // Chuyển đổi qua lại các Tab
         function switchTab(tab) {
             const tabInput = document.getElementById("tab-input");
             const tabSettings = document.getElementById("tab-settings");
@@ -566,6 +565,7 @@
                 tabSettings.classList.add("hidden");
                 btnInput.className = "flex flex-col items-center gap-1 text-brand-600 transition-colors";
                 btnSettings.className = "flex flex-col items-center gap-1 text-slate-400 transition-colors";
+                renderTabInput();
             } else {
                 tabInput.classList.add("hidden");
                 tabSettings.classList.remove("hidden");
@@ -575,7 +575,6 @@
             }
         }
 
-        // Render trang cài đặt
         function renderTabSettings() {
             document.getElementById("setting-price-electric").value = appData.settings.priceElectric;
             document.getElementById("setting-price-water").value = appData.settings.priceWater;
@@ -583,15 +582,20 @@
             const roomListContainer = document.getElementById("setting-room-list");
             roomListContainer.innerHTML = "";
 
+            if (appData.settings.rooms.length === 0) {
+                roomListContainer.innerHTML = `<p class="text-xs text-slate-400 py-2 text-center">Chưa có phòng nào trong Cấu Hình.</p>`;
+                return;
+            }
+
             appData.settings.rooms.forEach((roomObj, idx) => {
                 const item = document.createElement("div");
-                item.className = "flex items-center justify-between py-2 text-sm text-slate-800";
+                item.className = "flex items-center justify-between py-2 text-sm text-slate-800 border-b border-slate-100 last:border-0";
                 item.innerHTML = `
                     <div>
-                        <div class="font-bold">${roomObj.name}</div>
+                        <div class="font-bold text-slate-900">${roomObj.name}</div>
                         <div class="text-xs text-slate-500">Giá: ${formatMoney(roomObj.price)}đ | Dịch vụ: ${formatMoney(roomObj.service)}đ</div>
                     </div>
-                    <button onclick="removeRoom(${idx})" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 rounded bg-rose-50">
+                    <button onclick="removeRoom(${idx})" class="text-rose-500 hover:text-rose-700 text-xs px-2.5 py-1 rounded-lg bg-rose-50 font-semibold active:scale-95 transition-all">
                         <i class="fa-solid fa-trash-can"></i> Xóa
                     </button>
                 `;
@@ -633,15 +637,25 @@
             }
         }
 
+        // Xóa phòng hoàn toàn (Cả Cấu Hình lẫn dữ liệu trong Lịch Sử)
         function removeRoom(index) {
-            if (confirm("Bạn có chắc chắn muốn xóa phòng này khỏi Danh Sách Hiện Tại? (Dữ liệu của phòng ở các tháng cũ vẫn được giữ nguyên đầy đủ)")) {
+            const roomName = appData.settings.rooms[index].name;
+            if (confirm(`Bạn có chắc chắn muốn XÓA hẳn phòng "${roomName}" không?\n\nLưu ý: Tất cả dữ liệu của phòng này (kể cả lịch sử các tháng cũ) sẽ bị xóa sạch hoàn toàn.`)) {
+                // 1. Xóa khỏi cấu hình
                 appData.settings.rooms.splice(index, 1);
+
+                // 2. Xóa triệt để tên phòng này trong tất cả các tháng lịch sử
+                Object.keys(appData.records).forEach(period => {
+                    if (appData.records[period][roomName]) {
+                        delete appData.records[period][roomName];
+                    }
+                });
+
                 saveStorage();
                 renderTabSettings();
             }
         }
 
-        // Mở Modal Hóa Đơn
         function openInvoiceModal(roomName) {
             activeRoomForInvoice = roomName;
             const record = appData.records[currentPeriod][roomName] || {};
@@ -686,7 +700,6 @@
             document.getElementById("invoiceModal").classList.add("hidden");
         }
 
-        // Copy văn bản Hóa đơn gửi Zalo
         function copyZaloText() {
             const roomName = activeRoomForInvoice;
             const record = appData.records[currentPeriod][roomName] || {};
@@ -729,7 +742,6 @@ Vui lòng thanh toán sớm. Xin cảm ơn!`;
             });
         }
 
-        // Tải hóa đơn dạng ảnh HD
         function downloadInvoiceImage() {
             const card = document.getElementById("invoice-card");
             html2canvas(card, { scale: 2 }).then(canvas => {
@@ -740,7 +752,6 @@ Vui lòng thanh toán sớm. Xin cảm ơn!`;
             });
         }
 
-        // Hàm định dạng số tiền
         function formatMoney(amount) {
             return new Intl.NumberFormat('vi-VN').format(amount);
         }
